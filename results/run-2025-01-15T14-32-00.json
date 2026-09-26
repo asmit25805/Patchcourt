@@ -1,0 +1,98 @@
+{
+  "run_id": "run-2025-01-15T14-32-00",
+  "repo": "patchcourt",
+  "branch": "patchcourt-demo",
+  "wall_clock_seconds": 312,
+  "pipeline_stages": {
+    "auditors_parallel": true,
+    "verifier_fork_context": false,
+    "verifier_rationale_stripped": true
+  },
+  "findings": {
+    "total": 17,
+    "security": 5,
+    "test_coverage": 12,
+    "actionable_selected": 3,
+    "selection_note": "Three findings selected for patching: the two high-signal issues with failing tests (F-SEC-002-COV-002, F-COV-001) and the high-severity security finding with no test (F-SEC-001). Remaining findings are low-priority coverage gaps documented but not patched in this run."
+  },
+  "patches_proposed": 3,
+  "verdicts": {
+    "pass": 3,
+    "fail": 0
+  },
+  "rejected_findings": [],
+  "accepted_findings": [
+    {
+      "finding_id": "F-SEC-002-COV-002",
+      "type": "security",
+      "severity": "medium",
+      "file": "src/union_find.py",
+      "description": "find() missing bounds check — negative indices alias silently, out-of-range raises IndexError not ValueError",
+      "verdict": "pass",
+      "verifier_confidence": 0.98,
+      "verifier_reasoning": "Diff adds 0 <= x < len(self.parent) guard and raises ValueError for both cases. Both previously-failing tests now pass. Recursive path-compression call is protected by same guard since parent[] only contains valid indices.",
+      "tests_before": "FAILED: test_find_rejects_negative_index, test_find_rejects_out_of_range_index",
+      "tests_after": "10/10 passed"
+    },
+    {
+      "finding_id": "F-COV-001",
+      "type": "test-coverage",
+      "severity": "high",
+      "file": "src/lru_cache.py",
+      "description": "put() evicts head.next (MRU) instead of tail.prev (LRU) — wrong eviction order",
+      "verdict": "pass",
+      "verifier_confidence": 0.99,
+      "verifier_reasoning": "Diff correctly changes evict = self.head.next to evict = self.tail.prev. test_eviction_removes_least_recently_used was FAILED, now PASSED. No regressions. Fix aligns with LRU semantics: _add_front() inserts at head, so tail.prev is always the LRU node.",
+      "tests_before": "FAILED: test_eviction_removes_least_recently_used",
+      "tests_after": "10/10 passed"
+    },
+    {
+      "finding_id": "F-SEC-001",
+      "type": "security",
+      "severity": "high",
+      "file": "src/hash_map.py",
+      "description": "compute_key() calls eval() on caller-supplied input — arbitrary code execution",
+      "verdict": "pass",
+      "verifier_confidence": 0.98,
+      "verifier_reasoning": "eval(expression) eliminated entirely. Replaced with unconditional TypeError. No eval/exec calls remain in codebase. No existing test calls compute_key() — method is dead code. For a security finding, removing the vulnerable code path is the correct tradeoff over wrapping it. No regressions.",
+      "tests_before": "7/10 passed (3 unrelated failures from other bugs)",
+      "tests_after": "10/10 passed"
+    }
+  ],
+  "test_baseline": {
+    "before": {
+      "passed": 7,
+      "failed": 3,
+      "failed_tests": [
+        "tests/test_lru_cache.py::test_eviction_removes_least_recently_used",
+        "tests/test_union_find.py::test_find_rejects_negative_index",
+        "tests/test_union_find.py::test_find_rejects_out_of_range_index"
+      ]
+    },
+    "after": {
+      "passed": 10,
+      "failed": 0
+    }
+  },
+  "manual_review_estimate": {
+    "assumption_per_finding_minutes": 15,
+    "note": "15 min per finding for a senior engineer: read context, understand the fix, validate test output, check edge cases",
+    "findings_patched": 3,
+    "total_manual_minutes": 45,
+    "pipeline_wall_clock_minutes": 5.2,
+    "time_saved_minutes": 40
+  },
+  "files_created": [
+    "AGENTS.md",
+    ".bob/custom_modes.yaml",
+    ".bob/rules-agent/AGENTS.md",
+    ".bob/rules-ask/AGENTS.md",
+    ".bob/rules-plan/AGENTS.md",
+    "results/run-2025-01-15T14-32-00.json"
+  ],
+  "files_patched": [
+    "src/union_find.py",
+    "src/lru_cache.py",
+    "src/hash_map.py"
+  ]
+}

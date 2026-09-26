@@ -1,0 +1,598 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PatchCourt — Verified Auto-Fix Dashboard</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: -apple-system, "Segoe UI", system-ui, sans-serif;
+    font-size: 14px;
+    line-height: 1.6;
+    background: #f7f8fa;
+    color: #1f2328;
+    min-height: 100vh;
+  }
+
+  /* ── Header ── */
+  .header {
+    background: #1f2328;
+    color: #fff;
+    padding: 20px 0;
+    border-bottom: 3px solid #3b82d4;
+  }
+  .header-inner {
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 0 24px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+  .gavel {
+    font-size: 32px;
+    line-height: 1;
+  }
+  .header h1 {
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: -0.3px;
+  }
+  .header p {
+    font-size: 13px;
+    color: #8b949e;
+    margin-top: 2px;
+  }
+  .header-meta {
+    margin-left: auto;
+    text-align: right;
+    font-size: 12px;
+    color: #8b949e;
+  }
+  .header-meta strong { color: #e6edf3; }
+
+  /* ── Layout ── */
+  .page { max-width: 960px; margin: 0 auto; padding: 28px 24px 60px; }
+
+  /* ── Stats bar ── */
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 12px;
+    margin-bottom: 28px;
+  }
+  .stat {
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    padding: 14px 16px;
+    text-align: center;
+  }
+  .stat-value {
+    font-size: 28px;
+    font-weight: 700;
+    line-height: 1;
+    margin-bottom: 4px;
+  }
+  .stat-label { font-size: 11px; color: #57606a; text-transform: uppercase; letter-spacing: 0.5px; }
+  .stat-value.blue  { color: #3b82d4; }
+  .stat-value.green { color: #16a34a; }
+  .stat-value.red   { color: #dc2626; }
+  .stat-value.amber { color: #d97706; }
+  .stat-value.gray  { color: #57606a; }
+
+  /* ── Section title ── */
+  .section-title {
+    font-size: 13px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    color: #57606a;
+    margin-bottom: 12px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid #e5e7eb;
+  }
+
+  /* ── Pipeline diagram ── */
+  .pipeline {
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    padding: 20px 24px;
+    margin-bottom: 28px;
+    overflow-x: auto;
+  }
+  .pipeline-row {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    flex-wrap: nowrap;
+    min-width: 600px;
+  }
+  .pipeline-node {
+    background: #f7f8fa;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    padding: 8px 14px;
+    font-size: 12px;
+    font-weight: 600;
+    white-space: nowrap;
+    text-align: center;
+  }
+  .pipeline-node.orchestrator { border-color: #3b82d4; color: #3b82d4; }
+  .pipeline-node.auditor      { border-color: #7c5cd8; color: #7c5cd8; }
+  .pipeline-node.fixer        { border-color: #d97706; color: #d97706; }
+  .pipeline-node.verifier     { border-color: #0891b2; color: #0891b2; }
+  .pipeline-node.pr           { border-color: #16a34a; color: #16a34a; }
+  .pipeline-arrow {
+    color: #8b949e;
+    font-size: 16px;
+    padding: 0 6px;
+    flex-shrink: 0;
+  }
+  .pipeline-label {
+    font-size: 10px;
+    color: #57606a;
+    text-align: center;
+    margin-top: 4px;
+  }
+  .pipeline-col { display: flex; flex-direction: column; align-items: center; }
+  .parallel-badge {
+    font-size: 9px;
+    background: #7c5cd8;
+    color: #fff;
+    padding: 1px 5px;
+    border-radius: 10px;
+    margin-top: 3px;
+  }
+  .isolation-badge {
+    font-size: 9px;
+    background: #0891b2;
+    color: #fff;
+    padding: 1px 5px;
+    border-radius: 10px;
+    margin-top: 3px;
+  }
+
+  /* ── Finding cards ── */
+  .finding-card {
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    overflow: hidden;
+  }
+  .finding-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 18px;
+    border-bottom: 1px solid #e5e7eb;
+    background: #f7f8fa;
+  }
+  .finding-id {
+    font-size: 11px;
+    font-weight: 700;
+    font-family: monospace;
+    background: #e5e7eb;
+    padding: 2px 7px;
+    border-radius: 4px;
+    color: #1f2328;
+    flex-shrink: 0;
+  }
+  .finding-desc { font-size: 13px; font-weight: 600; flex: 1; }
+  .badge {
+    font-size: 10px;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    flex-shrink: 0;
+  }
+  .badge-high     { background: #fee2e2; color: #dc2626; }
+  .badge-medium   { background: #fef3c7; color: #d97706; }
+  .badge-low      { background: #f0f9ff; color: #0891b2; }
+  .badge-security { background: #fdf4ff; color: #7c5cd8; }
+  .badge-coverage { background: #f0fdf4; color: #16a34a; }
+  .badge-acquitted { background: #dcfce7; color: #16a34a; border: 1px solid #bbf7d0; font-size: 11px; padding: 3px 10px; }
+  .badge-rejected  { background: #fee2e2; color: #dc2626; border: 1px solid #fecaca; font-size: 11px; padding: 3px 10px; }
+
+  .finding-body { padding: 16px 18px; }
+  .finding-body .row { display: flex; gap: 12px; margin-bottom: 12px; flex-wrap: wrap; }
+  .finding-body .col { flex: 1; min-width: 220px; }
+  .col-label { font-size: 11px; color: #57606a; font-weight: 600; text-transform: uppercase; letter-spacing: 0.4px; margin-bottom: 4px; }
+
+  .evidence {
+    font-family: "SF Mono", "Fira Code", monospace;
+    font-size: 12px;
+    background: #f6f8fa;
+    border: 1px solid #e5e7eb;
+    border-radius: 4px;
+    padding: 8px 10px;
+    color: #e34234;
+    white-space: pre-wrap;
+    word-break: break-all;
+  }
+
+  .diff-block {
+    font-family: "SF Mono", "Fira Code", monospace;
+    font-size: 11.5px;
+    background: #0d1117;
+    color: #e6edf3;
+    border-radius: 6px;
+    overflow: auto;
+    padding: 12px;
+    line-height: 1.55;
+  }
+  .diff-block .del { color: #ff7b72; background: rgba(255,123,114,0.1); display: block; }
+  .diff-block .add { color: #3fb950; background: rgba(63,185,80,0.1); display: block; }
+  .diff-block .meta { color: #8b949e; display: block; }
+
+  .verdict-box {
+    border-radius: 6px;
+    padding: 12px 14px;
+    margin-top: 12px;
+  }
+  .verdict-box.pass { background: #f0fdf4; border: 1px solid #bbf7d0; }
+  .verdict-box.fail { background: #fff5f5; border: 1px solid #fecaca; }
+  .verdict-box .verdict-label {
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 5px;
+  }
+  .verdict-box.pass .verdict-label { color: #16a34a; }
+  .verdict-box.fail .verdict-label { color: #dc2626; }
+  .verdict-box .verdict-text { font-size: 12.5px; color: #374151; }
+  .confidence {
+    display: inline-block;
+    font-size: 11px;
+    background: #e5e7eb;
+    padding: 1px 7px;
+    border-radius: 10px;
+    color: #57606a;
+    margin-left: 8px;
+    font-weight: 600;
+  }
+
+  .test-delta {
+    display: flex;
+    gap: 8px;
+    margin-top: 8px;
+    font-size: 12px;
+  }
+  .test-before {
+    background: #fff5f5;
+    border: 1px solid #fecaca;
+    border-radius: 4px;
+    padding: 4px 9px;
+    color: #dc2626;
+    font-family: monospace;
+  }
+  .test-after {
+    background: #f0fdf4;
+    border: 1px solid #bbf7d0;
+    border-radius: 4px;
+    padding: 4px 9px;
+    color: #16a34a;
+    font-family: monospace;
+  }
+  .test-arrow { color: #8b949e; align-self: center; }
+
+  /* ── Isolation callout ── */
+  .isolation-callout {
+    background: #f0f9ff;
+    border: 1px solid #bae6fd;
+    border-left: 4px solid #0891b2;
+    border-radius: 6px;
+    padding: 14px 18px;
+    margin-bottom: 28px;
+    font-size: 13px;
+  }
+  .isolation-callout strong { color: #0c4a6e; }
+  .isolation-callout code {
+    font-family: monospace;
+    font-size: 12px;
+    background: #e0f2fe;
+    padding: 1px 5px;
+    border-radius: 3px;
+    color: #0369a1;
+  }
+
+  /* ── Timing ── */
+  .timing-bar {
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    padding: 16px 20px;
+    margin-bottom: 28px;
+    display: flex;
+    gap: 32px;
+    flex-wrap: wrap;
+  }
+  .timing-item { font-size: 13px; }
+  .timing-item .val { font-weight: 700; color: #3b82d4; }
+
+  /* ── Footer ── */
+  .footer {
+    text-align: center;
+    font-size: 12px;
+    color: #8b949e;
+    border-top: 1px solid #e5e7eb;
+    padding-top: 20px;
+    margin-top: 40px;
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-inner">
+    <div class="gavel">⚖️</div>
+    <div>
+      <h1>PatchCourt</h1>
+      <p>Verified Auto-Fix Pipeline — IBM Bob 2.0 Hackathon</p>
+    </div>
+    <div class="header-meta">
+      <div>Run <strong>run-2025-01-15T14-32-00</strong></div>
+      <div>Branch: <strong>patchcourt-demo</strong></div>
+    </div>
+  </div>
+</div>
+
+<div class="page">
+
+  <!-- Stats bar -->
+  <div class="stats">
+    <div class="stat">
+      <div class="stat-value blue">17</div>
+      <div class="stat-label">Findings</div>
+    </div>
+    <div class="stat">
+      <div class="stat-value amber">3</div>
+      <div class="stat-label">Patches Proposed</div>
+    </div>
+    <div class="stat">
+      <div class="stat-value green">3</div>
+      <div class="stat-label">Acquitted</div>
+    </div>
+    <div class="stat">
+      <div class="stat-value red">0</div>
+      <div class="stat-label">Rejected</div>
+    </div>
+    <div class="stat">
+      <div class="stat-value gray">10/10</div>
+      <div class="stat-label">Tests Passing</div>
+    </div>
+  </div>
+
+  <!-- Pipeline diagram -->
+  <div class="section-title">Pipeline</div>
+  <div class="pipeline">
+    <div class="pipeline-row">
+      <div class="pipeline-col">
+        <div class="pipeline-node orchestrator">Orchestrator</div>
+        <div class="pipeline-label">Bob Agent mode</div>
+      </div>
+      <div class="pipeline-arrow">→</div>
+      <div class="pipeline-col">
+        <div class="pipeline-node auditor">Auditor × 2</div>
+        <div class="parallel-badge">parallel</div>
+        <div class="pipeline-label">general subagents</div>
+      </div>
+      <div class="pipeline-arrow">→</div>
+      <div class="pipeline-col">
+        <div class="pipeline-node fixer">Fixer × 3</div>
+        <div class="pipeline-label">general subagents</div>
+      </div>
+      <div class="pipeline-arrow">→</div>
+      <div class="pipeline-col">
+        <div class="pipeline-node verifier">Verifier × 3</div>
+        <div class="isolation-badge">fork_context: false</div>
+        <div class="pipeline-label">explore subagents</div>
+      </div>
+      <div class="pipeline-arrow">→</div>
+      <div class="pipeline-col">
+        <div class="pipeline-node pr">PR</div>
+        <div class="pipeline-label">acquitted only</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Isolation callout -->
+  <div class="isolation-callout">
+    <strong>Context isolation enforced at the API level:</strong> Each Verifier subagent was
+    spawned with <code>fork_context: false</code> and <code>subagent_type: explore</code>.
+    The orchestrator explicitly projected <code>{finding, diff, test_before, test_after}</code>
+    before spawning — the <code>rationale</code> field is architecturally absent from the
+    Verifier's context window, not merely omitted by convention.
+    The Verifier cannot write files. It judges only the diff and the test output it is given.
+  </div>
+
+  <!-- Timing -->
+  <div class="timing-bar">
+    <div class="timing-item">Wall clock: <span class="val">5m 12s</span></div>
+    <div class="timing-item">Findings: <span class="val">17 total</span> (5 security, 12 coverage)</div>
+    <div class="timing-item">Tests: <span class="val">7/10 → 10/10</span></div>
+    <div class="timing-item">Est. manual review saved: <span class="val">~40 min</span></div>
+  </div>
+
+  <!-- Findings -->
+  <div class="section-title">Findings → Patches → Verdicts</div>
+
+  <!-- F-SEC-001 -->
+  <div class="finding-card">
+    <div class="finding-header">
+      <span class="finding-id">F-SEC-001</span>
+      <span class="finding-desc">Arbitrary code execution — <code style="font-size:12px">eval()</code> on caller-supplied input</span>
+      <span class="badge badge-high">High</span>
+      <span class="badge badge-security">Security</span>
+      <span class="badge badge-acquitted">✓ ACQUITTED</span>
+    </div>
+    <div class="finding-body">
+      <div class="row">
+        <div class="col">
+          <div class="col-label">File &amp; Line</div>
+          <code style="font-size:12px">src/hash_map.py : 31</code>
+        </div>
+        <div class="col">
+          <div class="col-label">Evidence</div>
+          <div class="evidence">return eval(expression)</div>
+        </div>
+      </div>
+      <div class="col-label" style="margin-bottom:6px">Patch diff</div>
+      <div class="diff-block"><span class="meta">--- a/src/hash_map.py</span>
+<span class="meta">+++ b/src/hash_map.py</span>
+<span class="meta">@@ -24,9 +24,6 @@</span>
+     def compute_key(self, expression):
+<span class="del">-        # NOTE (security): evaluates a caller-supplied expression</span>
+<span class="del">-        # directly with eval(). Any input reaching this from outside</span>
+<span class="del">-        # the process (a config file, a request body, a CLI arg) is</span>
+<span class="del">-        # arbitrary code execution.</span>
+<span class="del">-        return eval(expression)</span>
+<span class="add">+        raise TypeError("compute_key does not support arbitrary expression evaluation; pass a literal key directly")</span></div>
+      <div class="verdict-box pass">
+        <div class="verdict-label">Verifier verdict: PASS <span class="confidence">confidence 0.98</span></div>
+        <div class="verdict-text">eval(expression) eliminated entirely. Replaced with unconditional TypeError. No eval/exec calls remain in codebase. No existing test calls compute_key() — method is dead code. For a security finding, removing the vulnerable code path is the correct tradeoff. No regressions.</div>
+        <div class="test-delta">
+          <span class="test-before">before: 7/10 passed</span>
+          <span class="test-arrow">→</span>
+          <span class="test-after">after: 10/10 passed</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- F-SEC-002-COV-002 -->
+  <div class="finding-card">
+    <div class="finding-header">
+      <span class="finding-id">F-SEC-002</span>
+      <span class="finding-desc">Missing bounds check — negative index aliasing &amp; wrong exception type</span>
+      <span class="badge badge-medium">Medium</span>
+      <span class="badge badge-security">Security</span>
+      <span class="badge badge-acquitted">✓ ACQUITTED</span>
+    </div>
+    <div class="finding-body">
+      <div class="row">
+        <div class="col">
+          <div class="col-label">File &amp; Line</div>
+          <code style="font-size:12px">src/union_find.py : 13</code>
+        </div>
+        <div class="col">
+          <div class="col-label">Evidence</div>
+          <div class="evidence">if self.parent[x] != x:  # no bounds check</div>
+        </div>
+      </div>
+      <div class="col-label" style="margin-bottom:6px">Patch diff</div>
+      <div class="diff-block"><span class="meta">--- a/src/union_find.py</span>
+<span class="meta">+++ b/src/union_find.py</span>
+<span class="meta">@@ -8,9 +8,8 @@</span>
+     def find(self, x):
+<span class="del">-        # NOTE: no bounds validation on x. Negative indices silently</span>
+<span class="del">-        # alias to the wrong element (Python negative indexing) instead</span>
+<span class="del">-        # of raising, and out-of-range positive indices raise a raw</span>
+<span class="del">-        # IndexError instead of a clear, catchable error.</span>
+<span class="del">-        if self.parent[x] != x:</span>
+<span class="add">+        if not (0 &lt;= x &lt; len(self.parent)):</span>
+<span class="add">+            raise ValueError(f"x={x} is out of range [0, {len(self.parent)})")</span>
+<span class="add">+        if self.parent[x] != x:</span>
+             self.parent[x] = self.find(self.parent[x])
+         return self.parent[x]</div>
+      <div class="verdict-box pass">
+        <div class="verdict-label">Verifier verdict: PASS <span class="confidence">confidence 0.98</span></div>
+        <div class="verdict-text">Bounds check added as first statement. Catches negative indices (0 ≤ x fails) and out-of-range positive indices (x &lt; len fails). Both raise ValueError as the tests require. Previously-failing tests test_find_rejects_negative_index and test_find_rejects_out_of_range_index now pass. Recursive path-compression call is protected — parent[] only contains valid indices. No regressions.</div>
+        <div class="test-delta">
+          <span class="test-before">FAILED: test_find_rejects_negative_index, test_find_rejects_out_of_range_index</span>
+          <span class="test-arrow">→</span>
+          <span class="test-after">after: 10/10 passed</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- F-COV-001 -->
+  <div class="finding-card">
+    <div class="finding-header">
+      <span class="finding-id">F-COV-001</span>
+      <span class="finding-desc">Wrong eviction order — LRU cache evicts MRU node instead of LRU node</span>
+      <span class="badge badge-high">High</span>
+      <span class="badge badge-coverage">Coverage</span>
+      <span class="badge badge-acquitted">✓ ACQUITTED</span>
+    </div>
+    <div class="finding-body">
+      <div class="row">
+        <div class="col">
+          <div class="col-label">File &amp; Line</div>
+          <code style="font-size:12px">src/lru_cache.py : 51</code>
+        </div>
+        <div class="col">
+          <div class="col-label">Evidence</div>
+          <div class="evidence">evict = self.head.next  # should be self.tail.prev</div>
+        </div>
+      </div>
+      <div class="col-label" style="margin-bottom:6px">Patch diff</div>
+      <div class="diff-block"><span class="meta">--- a/src/lru_cache.py</span>
+<span class="meta">+++ b/src/lru_cache.py</span>
+<span class="meta">@@ -43,11 +43,7 @@</span>
+         node = _Node(key, value)
+         self.cache[key] = node
+         self._add_front(node)
+         if len(self.cache) &gt; self.capacity:
+<span class="del">-            # NOTE: evicts the node next to head (the most-recently-used</span>
+<span class="del">-            # side) instead of the node next to tail (the</span>
+<span class="del">-            # least-recently-used side) -- silently evicts the wrong</span>
+<span class="del">-            # entry under sustained load.</span>
+<span class="del">-            evict = self.head.next</span>
+<span class="add">+            evict = self.tail.prev</span>
+             self._remove(evict)
+             del self.cache[evict.key]</div>
+      <div class="verdict-box pass">
+        <div class="verdict-label">Verifier verdict: PASS <span class="confidence">confidence 0.99</span></div>
+        <div class="verdict-text">Eviction changed from head.next (MRU) to tail.prev (LRU). List structure: head (sentinel) ↔ MRU ↔ ... ↔ LRU ↔ tail (sentinel). _add_front() inserts after head, so tail.prev is always the least-recently-used node. test_eviction_removes_least_recently_used was FAILED, now PASSED. No regressions.</div>
+        <div class="test-delta">
+          <span class="test-before">FAILED: test_eviction_removes_least_recently_used</span>
+          <span class="test-arrow">→</span>
+          <span class="test-after">after: 10/10 passed</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Rejection log (empty this run) -->
+  <div class="section-title" style="margin-top:8px">Rejection Log</div>
+  <div style="background:#fff;border:1px solid #e5e7eb;border-radius:8px;padding:20px 18px;color:#57606a;font-size:13px;margin-bottom:28px;">
+    No patches were rejected in this run. All three proposed patches independently verified as correct by the Verifier subagent.
+    <br><br>
+    <em>Note for demo: the rejection log is a first-class output of the PatchCourt pipeline.
+    A Verifier catching a bad patch — with concrete evidence — is the expected demo moment.
+    To see a rejection, introduce a subtly-wrong patch (e.g. one that fixes the crash but
+    breaks an edge case) and re-run the pipeline.</em>
+  </div>
+
+  <!-- Full run data -->
+  <div class="section-title">Full Run Record</div>
+  <div style="background:#fff;border:1px solid #e5e7eb;border-radius:8px;padding:16px 18px;margin-bottom:12px;">
+    <div style="font-size:12px;color:#57606a;margin-bottom:8px;">
+      Machine-readable: <code style="font-family:monospace;background:#f6f8fa;padding:2px 6px;border-radius:3px;">results/run-2025-01-15T14-32-00.json</code>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:12.5px;">
+      <div><strong>Auditors:</strong> 2 subagents, parallel, fork_context: false</div>
+      <div><strong>Fixers:</strong> 3 subagents, general type</div>
+      <div><strong>Verifiers:</strong> 3 subagents, explore type, fork_context: false</div>
+      <div><strong>Rationale stripped:</strong> yes — before every Verifier spawn</div>
+      <div><strong>Wall clock:</strong> 312 seconds (~5m 12s)</div>
+      <div><strong>Manual review equivalent:</strong> ~45 min (15 min × 3 findings)</div>
+    </div>
+  </div>
+
+  <div class="footer">
+    Made with IBM Bob &nbsp;·&nbsp; PatchCourt — IBM Bob 2.0 Hackathon &nbsp;·&nbsp; <a href="PR_DESCRIPTION.md" style="color:#3b82d4;text-decoration:none">View PR Description</a>
+  </div>
+
+</div>
+</body>
+</html>
