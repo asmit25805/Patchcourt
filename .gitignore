@@ -1,0 +1,17 @@
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+.coverage
+htmlcov/
+coverage.xml
+venv/
+.venv/
+.env
+*.egg-info/
+dist/
+build/
+node_modules/
+.next/
+.DS_Store
+Thumbs.db
